@@ -6,8 +6,36 @@ import createReactClass from 'create-react-class';
 const NativeScrollView = requireNativeComponent('DirectedScrollView');
 const NativeScrollViewChild = requireNativeComponent('DirectedScrollViewChild');
 
+var ScrollResponderModified = ScrollResponder.Mixin;
+ScrollResponderModified.mixins = [
+    {
+      componentWillUnmount: function() {
+        // This null check is a fix for a broken version of uglify-es. Should be deleted eventually
+        // https://github.com/facebook/react-native/issues/17348
+        this._subscribableSubscriptions && this._subscribableSubscriptions.forEach(
+          (subscription) => subscription.remove()
+        );
+        this._subscribableSubscriptions = null;
+      },
+      addListenerOn: function(
+        eventEmitter: EventEmitter,
+        eventType: string,
+        listener: Function,
+        context: Object
+    ) {
+         if ( !this._subscribableSubscriptions ) {
+              this._subscribableSubscriptions = [];
+         }
+
+        this._subscribableSubscriptions.push(
+          eventEmitter.addListener(eventType, listener, context)
+        );
+      }
+    }
+];
+
 const ScrollView = createReactClass({
-  mixins: [ScrollResponder.Mixin],
+  mixins: [ScrollResponderModified],
   getInitialState: function() {
     return this.scrollResponderMixinGetInitialState();
   },
@@ -45,7 +73,7 @@ const ScrollView = createReactClass({
   },
   render: function() {
     return (
-      <NativeScrollView 
+      <NativeScrollView
         {...this.props}
         ref={this._setScrollViewRef}
         onScrollBeginDrag={this.scrollResponderHandleScrollBeginDrag}
